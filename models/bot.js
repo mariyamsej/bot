@@ -96,7 +96,7 @@ exports.handleBotRequest = async function (req) {
         }
         else if (isLink(req.body.message.text)) {
             sendDirectReply(chatId, "Я не могу обрабатывать ссылки.");
-            console.log("Link");
+            console.log("Link message");
         }
         else if ((req.body.message.date - lastMsgDate) >= 5) {
             let ms_id = await sendDirectReply(chatId, "Запрос обрабатывается...", message.message_id);
@@ -147,6 +147,8 @@ exports.handleBotRequest = async function (req) {
         db.run('UPDATE chats SET last_msg_date = ? WHERE chat_id = ?',
             [ req.body.message.date,  chatId]);
     })
+
+    isPrompts(chatId,  req.body.message.date)
 }
 
 function isLink(text) {
@@ -155,3 +157,14 @@ function isLink(text) {
   
     return regex.test(text);
   }
+
+  //limit for prompt
+  function isPrompts(chatId, prompts_token) { 
+    if (prompts_token > 3500) { 
+        console.log('Prompt more than 3500'); 
+        sendMessage(chatId, 'Превышен лимит токенов. История запросов была очищена.'); 
+        db.run('INSERT INTO deleted (chat_id, question, answer, q_date) SELECT chat_id, question, answer, q_date FROM convos WHERE id < (SELECT MAX(id) FROM convos) AND chat_id = ?', [chatId]); 
+        db.run('DELETE FROM convos WHERE id < (SELECT MAX(id) FROM convos) AND chat_id = ?', [chatId]); 
+        console.log("Clear Command"); 
+      }  
+}

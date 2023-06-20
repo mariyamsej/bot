@@ -14,7 +14,7 @@ const {handleBotRequest} = require("./models/bot");
 
 const my_URL = process.env.MY_URL;
 const botToken = process.env.BOT_TOKEN;
-const chatAdmin = process.env.CHAT_ID;
+//const chatAdmin = process.env.CHAT_ID;
 
 app.post('/webhook', bodyParser.json(), async (req, res) => {
     try {
