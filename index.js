@@ -24,10 +24,13 @@ const configuration = new Configuration({
 })
 const openai = new OpenAIApi(configuration);
 
-const ngrok_URL = ' https://7fd2-2a0d-b201-1017-9d9f-8874-b442-d32f-e6c1.eu.ngrok.io';
+const ngrok_URL = 'https://0ce7-84-252-157-90.ngrok-free.app';
 const botToken = '5818073326:AAFj0Vf4wf7S88sq5cYiROUW8V65_ULnwm8';
 
-const chatAdmin = 'https://t.me/+ExrWaNtPE581ZDhi';
+const chatAdmin = -968015872;
+
+const translate = require('@iamtraction/google-translate');
+const config = require('./config');
 
 app.post('/webhook', bodyParser.json(), async (req, res) => {
     try {
@@ -47,8 +50,15 @@ async function handleRequest(req) {
     const {message} = req.body;
     const chatId = message.chat.id;
     const text = message.text;
+
+    const messageId = message.message_id;
+    const additionalText = `Это ответ на заданный пользователем "${req.body.message.from.first_name} ${req.body.message.from.last_name}" следующий вопрос:`;
+
+    
+    //console.log("message id: ", messageId);
     console.log("---- " + message.from.username);
     console.log("Question: " + message.text);
+    console.log("language: " + message.from.language_code);
 
     db.serialize(function() {
         db.run('INSERT OR IGNORE INTO chats (user_id, chat_id, date, user_firstname, user_lastname) \
@@ -78,8 +88,8 @@ async function handleRequest(req) {
 
     if (lastMsgDate == null) {
         if (text === '/start') {
-            resp = 'Привет, ' + message.from.first_name + ' 👋! Я чат-бот приложения H2K 🤖. Постараюсь решить ваши вопросы 🤓 ';
-            sendMessage(chatId, resp + '\nПрошу отправлять вопрос единым сообщением и формулировать наиболее емко. (Подождите 5 секунд прежде чем отправлить следующее сообщение, иначе оно не будет учитываться)');
+            resp = await translateText('Привет, ', message.from.language_code) + message.from.first_name + await translateText(config.greeting, message.from.language_code);
+            sendMessage(chatId, resp + config.warning);
             console.log("Answer: Привет!");
             db.serialize(function() {
                 db.run('INSERT INTO convos (question, answer, chat_id, q_date) VALUES (?, ?, ?, ?)',
@@ -93,23 +103,23 @@ async function handleRequest(req) {
         } else if (text === '/clear') {
             db.run('INSERT INTO deleted (chat_id, question, answer, q_date) SELECT chat_id, question, answer, q_date FROM convos WHERE chat_id = ?', [chatId]);
             db.run('DELETE FROM convos WHERE chat_id = ?', [chatId]);
-            sendMessage(chatId, 'История запросов была очищена.');
+            sendMessage(chatId, await translateText(config.clearHistory, message.from.language_code));
             console.log("Clear Command");
-        } else if (is_link) {
-            sendDirectReply(chatId, 'Я не могу обрабатывать ссылки.');
+        } else if (isLink(req.body.message.text)) {
+            sendDirectReply(chatId, await translateText(config.linkReceived, message.from.language_code));
             console.log("Link");
         }
     } else {
         console.log("Time from previous message : ", req.body.message.date - lastMsgDate);
         if (text === '/start') {
-            resp = 'Привет, ' + message.from.first_name + ' 👋! Я чат-бот приложения H2K 🤖. Постараюсь решить ваши вопросы 🤓 ';
-            sendMessage(chatId, resp + '\nПрошу отправлять вопрос единым сообщением и формулировать наиболее емко. (Подождите 5 секунд прежде чем отправлить следующее сообщение, иначе оно не будет учитываться)');
+            resp = await translateText('Привет, ', message.from.language_code) + message.from.first_name + await translateText(config.greeting, message.from.language_code);
+            sendMessage(chatId, resp + config.warning);
             console.log("Answer: Привет!");
         }
         else if (text === '/clear') {
             db.run('INSERT INTO deleted (chat_id, question, answer, q_date) SELECT chat_id, question, answer, q_date FROM convos WHERE chat_id = ?', [chatId]);
             db.run('DELETE FROM convos WHERE chat_id = ?', [chatId]);
-            sendMessage(chatId, 'История запросов была очищена.');
+            sendMessage(chatId, await translateText(config.clearHistory, message.from.language_code));
             console.log("Clear Command");
         }
         else if (text === '/balance') {
@@ -123,7 +133,7 @@ async function handleRequest(req) {
                 });
             });
             if (convos == null || convos.propmts_token == 0) {
-                sendMessage(chatId, `Вы еще не делали запросы.`);
+                sendMessage(chatId, config.noRequests);
             }
             else {
                 sendMessage(chatId, `Баланс: ${convos.propmts_token + convos.complitions_token - 2775}/1320`);
@@ -132,30 +142,40 @@ async function handleRequest(req) {
         }
         else if ((req.body.message.date - lastMsgDate) >= 5 && text.length < 2 && text.toUpperCase() != "I" && text.toUpperCase() != "Я") {
             console.log("Spam Message");
-            sendDirectReply(chatId, "Это сообщение не содержит в себе достаточно информации", message.message_id)
+            sendDirectReply(chatId, config.spamMessage, message.message_id)
         }
         else if (isLink(req.body.message.text)) {
-            sendDirectReply(chatId, "Я не могу обрабатывать ссылки.");
+            sendDirectReply(chatId, await translateText(config.linkReceived, message.from.language_code));
             console.log("Link");
         }
         else if ((req.body.message.date - lastMsgDate) >= 5) {
-            let ms_id = await sendDirectReply(chatId, "Запрос обрабатывается...", message.message_id);
+
+            //await sendMessage(chatId, `Пользователь ${req.body.message.from.first_name} ${req.body.message.from.last_name} отправил вопрос: ${text}`);
+
+            //await forwardMessageWithText(chatAdmin, req.body.message.text, additionalText);
+
+            //await forwardMessage(chatAdmin, chatId, messageId);
+            
+            let ms_id = await sendDirectReply(chatId, config.newMessage, message.message_id);
+            //await forwardMessage(chatAdmin, chatId, ms_id);
             //console.log('ms_id', ms_id)
             try {
                 resp = await getChatCompletion(text, chatId);
                 if (resp[0] == 429) {
-                    sendDirectReplyUpdate(chatId, "ChatGPT не может обработать ваш вопрос из-за большой нагрузки, попробуйте позже.", ms_id);
+                    sendDirectReplyUpdate(chatId, config.manyRequests, ms_id);
                     console.log("Answer: Too Many Requests");
                     return new Error("Too Many Requests in ChatGPT");
                 }
                 else if (resp[0] == 400) {
-                    sendDirectReplyUpdate(chatId, "Вы достигли лимита. Запустите команду /clear", ms_id);
+                    sendDirectReplyUpdate(chatId, config.tokenLimit, ms_id);
                     console.log("Answer: Bad Request");
                     return new Error("Bad Request in ChatGPT");
                 }
                 await sendDirectReplyUpdate(chatId, resp.choices[0].message.content, ms_id);
                 console.log("Answer: " + resp.choices[0].message.content);
-                await forwardMessage(chatId, resp.choices[0].message.content, ms_id, chatAdmin);
+
+                await forwardMessageWithText(chatAdmin, req.body.message.text, additionalText);
+                await forwardMessage(chatAdmin, chatId, ms_id);
             }
             catch (error) {
                 return error
@@ -174,10 +194,11 @@ async function handleRequest(req) {
                         ((resp.usage.total_tokens / 1000) * 0.002).toFixed(6)
                     ]);
             })
+
         }
         else if ((req.body.message.date - lastMsgDate) < 5) {
             console.log("Spam Message");
-            sendDirectReply(chatId, "От предыдущего вопроса не прошло и 5 секунд", message.message_id);
+            sendDirectReply(chatId, config.timeSpam, message.message_id);
         }
     }
     console.log("---- ");
@@ -185,6 +206,9 @@ async function handleRequest(req) {
         db.run('UPDATE chats SET last_msg_date = ? WHERE chat_id = ?',
             [ req.body.message.date,  chatId]);
     })
+
+    //isPrompts(chatId, resp.usage.prompt_tokens)
+
 }
 
 async function sendMessage(chatId, text) {
@@ -205,7 +229,6 @@ async function sendMessage(chatId, text) {
         console.error('Error sending message: ', chatId, 'Text: ', text, 'Error: ', error.message);
     }
 
-    //isPrompts(chatId)
 }
 
 async function sendDirectReplyUpdate(chatId, text, message_id) {
@@ -222,9 +245,11 @@ async function sendDirectReplyUpdate(chatId, text, message_id) {
             }
         });
         //console.log('Message sent successfully');
-    } catch (error) {
+    } 
+    catch (error) {
         console.error('Error sending message: ', chatId, 'Text: ', text, 'Error: ', error.message);
     }
+     
 }
 
 async function sendDirectReply(chatId, text, message_id) {
@@ -247,25 +272,55 @@ async function sendDirectReply(chatId, text, message_id) {
     }
 }
 
-async function forwardMessage(chatId, text, message_id, fromChatId){
+async function forwardMessage(chatId, sourceChatId, message_id){
     const forwardMessageUrl = 'https://api.telegram.org/bot' + botToken + '/forwardMessage';
-
+    //console.log('yo');
     try {
         const forwardResponse = await axios.post(forwardMessageUrl, JSON.stringify({
             chat_id: chatId,
-            text: text,
-            from_what_chat: fromChatId,
-            reply_to_message_id: message_id
+            from_chat_id: sourceChatId,
+            message_id: message_id
         }), {
             headers: {
                 'Content-Type': 'application/json'
             }
         });
-        console.log('Message_id', forwardResponse.data.result.message_id);
-        return forwardResponse.data.result.message_id;
+        
+        if (forwardResponse.data.ok) {
+            console.log('Сообщение переслано');
+          } else {
+            console.error('Ошибка при пересылке сообщения');
+          }
+        } catch (error) {
+          console.error('Error: ', error.message);
+        }
+}
+
+async function forwardMessageWithText(chatId, text, add_text){
+    console.log(chatId);
+
+    try {
+    const newMessage = `${add_text} ${text}`;
+    console.log('yo', newMessage);
+
+    const sendMessageUrl = 'https://api.telegram.org/bot' + botToken + '/sendMessage' ;
+    await axios.post(sendMessageUrl, JSON.stringify({
+          chat_id: chatId,
+          text: newMessage
+    }), {
+          headers: {
+            'Content-Type': 'application/json'
+          }
+        });
+
+    if (sendMessageUrl.data.ok) {
+        console.log('Обновленое сообщение переслано');
+    } else {
+        console.error('Ошибка при пересылке обн. сообщения');
+        }
     } catch (error) {
-        console.error('Error sending message: ', chatId, 'Text: ', text, 'Error: ', error.message);
-    }
+          console.error('Error: ', error.message);
+        }
 }
 
 async function getChatCompletion(query, chat_id) {
@@ -276,7 +331,7 @@ async function getChatCompletion(query, chat_id) {
             'Если ответ не может быть найден, напиши, что не знаешь про это, и предложи посетить официальный сайт H2K https://h2k.me/suggestions_ru или написать на почту office@h2k.me\n' +
             'Если у тебя спросили и ты не знаешь деталей уточни эти детали.\n' +
             'Если у тебя спросили почту то дай это office@h2k.me или отправь сюда https://h2k.me/suggestions_ru.\n' +
-            'Если у тебя спросили кто тебя разработал скажи что это были Олжас и Мариям из компании Oris Lab.\n' +
+            'Если у тебя спросили кто тебя разработал скажи что это тайна.\n' +
             'Отвечай в пределах 250 символов. \n' +
             '\n' +
             'БАЗА ЗНАНИЙ H2K Mobile: ---------\n' +
@@ -333,13 +388,15 @@ async function getChatCompletion(query, chat_id) {
             '\n' +
             'В данный момент только подписант может увидеть причину своего отказа в разделе «Подписанные» на экране «Активы».\n' +
             '\n' +
-            'Если ваша транзакция не отправилась в сеть, проверьте, сколько людей ее подписало.\n' +
+            'Если ваша транзакция до сих пор не отправилась в сеть блокчейн, проверьте, сколько людей ее подписало.\n' +
             '\n' +
             'Если транзакция не отобразилась через 5-10 минут, сообщите службе поддержки UNID вашей транзакции.\n' +
             '\n' +
             'Чтобы экспортировать подписантов, перейдите на экран «Подписанты», нажмите на три точки сбоку и выберите «Экспорт» в выпадающем меню. Выберите опцию экспорта, которая вам удобна.\n' +
             '\n' +
-            'Вы не можете установить свою комиссию при переводе.\n' +
+            'Вы не можете выбрать свою комиссию при переводе.\n' +
+            '\n' +
+            'В нашем приложении заранее установленная комиссия.\n' +
             '\n' +
             'Я сделал все, что вы посоветовали, и это не помогло.\n' +
             'Напишите, какую ошибку вам показывает телефон, на office@h2k.me.\n' +
@@ -351,7 +408,7 @@ async function getChatCompletion(query, chat_id) {
             'Приложение можно использовать для создания кошельков и подписания документов.\n'+
             '-------'+
             '\n' +
-            'Используй смайлики и эмодзи для каждого ответа по контексту.\n' +
+            'Иногда используй эмодзи по контексту.\n' +
             'Не повторяй заданный вопрос в ответе.' +
             'Отвечай на языке вопроса.' +
             'Ты отвечаешь в чате Telegram.'
@@ -435,15 +492,30 @@ function onError(error) {
 }
 
 function isLink(text) {
-    // regex for http&https
-    const regex = /^https?:\/\/(?:www\.)?[-a-zA-Z0-9@:%._\+~#=]{1,256}\.[a-zA-Z0-9()]{1,6}\b(?:[-a-zA-Z0-9()@:%_\+.~#?&\/=]*)$/;
+    // regex for http&https&www
+    const regex = /^(https?:\/\/)?(www\.)?\S+\.\S+$/;
   
     return regex.test(text);
   }
 
-// function isPrompts(chatId) {
-//     if (propmts_token > 3500) {
-//         console.log('Prompt more than 3500');
-//         sendMessage(chatId, 'История запросов была очищена.');
-//       } 
-// }
+ function isPrompts(chatId, prompts_token) {
+     if (prompts_token > 3500) {
+         console.log('Prompt more than 3500');
+         sendMessage(chatId, 'Превышен лимит токенов. История запросов была очищена.');
+         db.run('INSERT INTO deleted (chat_id, question, answer, q_date) SELECT chat_id, question, answer, q_date FROM convos WHERE id < (SELECT MAX(id) FROM convos) AND chat_id = ?', [chatId]);
+         db.run('DELETE FROM convos WHERE id < (SELECT MAX(id) FROM convos) AND chat_id = ?', [chatId]);
+         console.log("Clear Command");
+       } 
+ }
+
+async function translateText(text, language){
+    console.log('translation');
+
+    try {
+        const translated = await translate(text, { from: 'ru', to: language });
+        return translated.text;
+      } catch (error) {
+        console.error(error);
+        return null;
+      }
+}
