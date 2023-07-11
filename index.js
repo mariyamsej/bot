@@ -10,7 +10,7 @@ app.use(logger('dev'));
 const bodyParser = require("body-parser");
 const axios = require('axios');
 const http = require("http");
-const {handleBotRequest} = require("./models/bot");
+const { handleBotRequest, handleQueryCallback } = require('./models/bot');
 
 const my_URL = process.env.MY_URL;
 const botToken = process.env.BOT_TOKEN;
@@ -18,7 +18,12 @@ const botToken = process.env.BOT_TOKEN;
 
 app.post('/webhook', bodyParser.json(), async (req, res) => {
     try {
-        handleBotRequest(req);
+        if ('message' in req.body) {
+            handleBotRequest(req);
+        }
+        if ('callback_query' in req.body) {
+            handleQueryCallback(req)
+        }
         res.sendStatus(200);
     } catch (error) {
         console.error(error);

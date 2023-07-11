@@ -3,6 +3,7 @@
     "start": "npx nodemon index.js"
   },
   "dependencies": {
+    "@iamtraction/google-translate": "github:iamtraction/google-translate",
     "axios": "^1.4.0",
     "body-parser": "^1.20.2",
     "dotenv": "^16.3.1",
