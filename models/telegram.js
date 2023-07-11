@@ -2,19 +2,20 @@ const axios = require("axios");
 require('dotenv').config();
 const botToken = process.env.BOT_TOKEN;
 
-exports.sendMessage = async function(chatId, text) {
-    const sendMessageUrl = 'https://api.telegram.org/bot' + botToken + '/sendMessage';
+exports.sendMessage = async function(chatId, text, replyMarkup) {
+    const sendMessageUrl = `https://api.telegram.org/bot${botToken}/sendMessage`;
 
     try {
         const response = await axios.post(sendMessageUrl, JSON.stringify({
             chat_id: chatId,
-            text: text
+            text: text,
+            reply_markup: replyMarkup
         }), {
             headers: {
                 'Content-Type': 'application/json'
             }
         });
-        console.log('Message_id', response.data.result.message_id);
+        console.log('Sent message_id', response.data.result.message_id);
         return response.data.result.message_id;
     } catch (error) {
         console.error('Error sending message: ', chatId, 'Text: ', text, 'Error: ', error.message);
@@ -22,7 +23,7 @@ exports.sendMessage = async function(chatId, text) {
 }
 
 exports.sendDirectReply = async function (chatId, text, message_id) {
-    const sendMessageUrl = 'https://api.telegram.org/bot' + botToken + '/sendMessage';
+    const sendMessageUrl = `https://api.telegram.org/bot${botToken}/sendMessage`;
 
     try {
         const response = await axios.post(sendMessageUrl, JSON.stringify({
@@ -34,15 +35,74 @@ exports.sendDirectReply = async function (chatId, text, message_id) {
                 'Content-Type': 'application/json'
             }
         });
-        console.log('Message_id', response.data.result.message_id);
+        console.log('Replied message_id', response.data.result.message_id);
         return response.data.result.message_id;
     } catch (error) {
-        console.error('Error sending message: ', chatId, 'Text: ', text, 'Error: ', error.message);
+        console.error('Error sending reply message: ', chatId, 'Text: ', text, 'Error: ', error.message);
+    }
+}
+
+exports.answerCallbackQuery = async function (callback_query_id) {
+    const api_url = `https://api.telegram.org/bot${botToken}/answerCallbackQuery`;
+
+    try {
+        const response = await axios.post(api_url, JSON.stringify({
+            callback_query_id: callback_query_id,
+        }), {
+            headers: {
+                'Content-Type': 'application/json'
+            }
+        });
+        console.log('Callback query result', response.data.result);
+        return response.data.result;
+    } catch (error) {
+        console.error('Error answering callback query: ', text, 'Error: ', error.message);
+    }
+}
+
+exports.sendInlineMarkupMessage = async function (chatId, text, replyMarkup) {
+    const sendMessageUrl = `https://api.telegram.org/bot${botToken}/sendMessage`;
+
+    try {
+        const response = await axios.post(sendMessageUrl, JSON.stringify({
+            chat_id: chatId,
+            text: text,
+            reply_markup: replyMarkup
+        }), {
+            headers: {
+                'Content-Type': 'application/json'
+            }
+        });
+        console.log('Sent inline message_id', response.data.result.message_id);
+        return response.data.result.message_id;
+    } catch (error) {
+        console.error('Error sending inline message: ', chatId, 'Text: ', text, 'Error: ', error.message);
+    }
+}
+
+exports.editMessageText = async function(chatId, message_id, text, replyMarkup) {
+    const editMessageUrl = 'https://api.telegram.org/bot' + botToken + '/editMessageText';
+
+    try {
+        const response = await axios.post(editMessageUrl, JSON.stringify({
+            chat_id: chatId,
+            message_id: message_id,
+            text: text,
+            reply_markup: replyMarkup
+        }), {
+            headers: {
+                'Content-Type': 'application/json'
+            }
+        });
+        console.log('Edited message_id', response.data.result.message_id);
+        return response.data.result.message_id;
+    } catch (error) {
+        console.error('Error editing message: ', chatId, 'Text: ', text, 'Error: ', error.message);
     }
 }
 
 exports.sendDirectReplyUpdate = async function (chatId, text, message_id) {
-    const sendMessageUrl = 'https://api.telegram.org/bot' + botToken + '/editMessageText';
+    const sendMessageUrl = `https://api.telegram.org/bot${botToken}/editMessageText`;
 
     try {
         const response = await axios.post(sendMessageUrl, JSON.stringify({
@@ -56,12 +116,12 @@ exports.sendDirectReplyUpdate = async function (chatId, text, message_id) {
         });
         //console.log('Message sent successfully');
     } catch (error) {
-        console.error('Error sending message: ', chatId, 'Text: ', text, 'Error: ', error.message);
+        console.error('Error updating reply message: ', chatId, 'Text: ', text, 'Error: ', error.message);
     }
 }
 
 exports.forwardMessage =  async function (chatId, sourceChatId, message_id){
-    const forwardMessageUrl = 'https://api.telegram.org/bot' + botToken + '/forwardMessage';
+    const forwardMessageUrl = `https://api.telegram.org/bot${botToken}/forwardMessage`;
     //console.log('yo');
     try {
         const forwardResponse = await axios.post(forwardMessageUrl, JSON.stringify({
@@ -74,14 +134,9 @@ exports.forwardMessage =  async function (chatId, sourceChatId, message_id){
             }
         });
         
-        if (forwardResponse.data.ok) {
-            console.log('Сообщение переслано');
-          } else {
-            console.error('Ошибка при пересылке сообщения');
-          }
-        } catch (error) {
-          console.error('Error: ', error.message);
-        }
+    } catch (error) {
+        console.error('Error forwarding message: ', error.message);
+    }
 }
 
 exports.forwardMessageWithText = async function (chatId, text, add_text){
@@ -89,9 +144,9 @@ exports.forwardMessageWithText = async function (chatId, text, add_text){
 
     try {
     const newMessage = `${add_text} ${text}`;
-    console.log('yo', newMessage);
+    console.log('Forwarded question', newMessage);
 
-    const sendMessageUrl = 'https://api.telegram.org/bot' + botToken + '/sendMessage' ;
+    const sendMessageUrl = `https://api.telegram.org/bot${botToken}/sendMessage`;
     await axios.post(sendMessageUrl, JSON.stringify({
           chat_id: chatId,
           text: newMessage
@@ -101,12 +156,7 @@ exports.forwardMessageWithText = async function (chatId, text, add_text){
           }
         });
 
-    if (sendMessageUrl.data.ok) {
-        console.log('Обновленое сообщение переслано');
-    } else {
-        console.error('Ошибка при пересылке обн. сообщения');
-        }
     } catch (error) {
-          console.error('Error: ', error.message);
-        }
+          console.error('Error forwarding UPDATED message: ', error.message);
+    }
 }

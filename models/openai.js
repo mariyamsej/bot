@@ -10,7 +10,7 @@ const configuration = new Configuration({
 const openai = new OpenAIApi(configuration);
 
 exports.getChatCompletion = async function (query, chat_id) {
-    let send_query = '(Отвечай как ассистент поддержки приложения H2K только на вопросы по приложению, если вопрос про другое то скажи что ты не можешь ответить.) Вопрос от пользователя: ' + query;
+    let send_query = '(Отвечай как ассистент поддержки приложения H2K только на вопросы по приложению, если вопрос про другое скажи что ты не можешь ответить.) Вопрос от пользователя: ' + query;
     try {
         let propts_prev = [
             { role: 'system', content: chatCompletionPrompts},
