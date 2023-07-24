@@ -7,15 +7,15 @@ exports.calculateCommission = async function (chatId, amount, network, languageC
     const commissionPercentage = 0.001;
     let blockchain = network.split('-')[0];
 
-    if (blockchain === 'Bitcoin') {
-        blockchain = 'BTC';
-    }
-    else if (blockchain === 'Ethereum') {
-        blockchain = 'ETH';
-    }
-    else if (blockchain === 'Tron') {
-        blockchain = 'TRX';
-    }
+    // if (blockchain === 'Bitcoin') {
+    //     blockchain = 'BTC';
+    // }
+    // else if (blockchain === 'Ethereum') {
+    //     blockchain = 'ETH';
+    // }
+    // else if (blockchain === 'Tron') {
+    //     blockchain = 'TRX';
+    // }
 
     const currency = network.split('-')[1];
      

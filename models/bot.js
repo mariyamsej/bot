@@ -28,15 +28,17 @@ exports.handleQueryCallback = async function (req) {
         exports.valuesList[chatId] = [];
         clearArrayAfterDelay(exports.valuesList[chatId]);
     }
-    
-    exports.valuesList[chatId].push(callback_query.data);
-    
+
+    // exports.valuesList[chatId].push(callback_query.data);
+        
     if (callback_query.data == 'Bitcoin')
     {        
     
         console.log("----" + callback_query.from.username);
         console.log("Blockchain network: " + callback_query.data);
         answerCallbackQuery(callback_query.id);
+
+        exports.valuesList[chatId].push('BTC');
     
         editMessageText(
             chatId,
@@ -59,6 +61,8 @@ exports.handleQueryCallback = async function (req) {
         console.log("----" + callback_query.from.username);
         console.log("Blockchain network: " + callback_query.data);
         answerCallbackQuery(callback_query.id);
+
+        exports.valuesList[chatId].push('ETH');
     
         editMessageText(
             chatId,
@@ -81,6 +85,8 @@ exports.handleQueryCallback = async function (req) {
         console.log("----" + callback_query.from.username);
         console.log("Blockchain network: " + callback_query.data);
         answerCallbackQuery(callback_query.id);
+
+        exports.valuesList[chatId].push('TRX');
     
         editMessageText(
             chatId,
@@ -122,12 +128,21 @@ exports.handleQueryCallback = async function (req) {
             
     }    
     else if (currencies.includes(callback_query.data)){
-        sendMessage(chatId, await translateText(`Введите сумму в ${callback_query.data}`, callback_query.message.language_code));
+
+        exports.valuesList[chatId].push(callback_query.data);
+        
+        if (exports.valuesList[chatId].length === 1){
+            sendMessage(chatId, await translateText(config.wrongFormat, callback_query.message.language_code));
+        }
+        else {
+            // exports.valuesList[chatId].push(callback_query.data);
+            sendMessage(chatId, await translateText(`Введите сумму в ${callback_query.data}`, callback_query.message.language_code));
     
         const bchainAndCurr = `${exports.valuesList[chatId][0]}-${callback_query.data}`;    
             
         IS_CALC_COMMISION[callback_query.from.username] = true;
         CHOSEN_CUR[callback_query.from.username] = bchainAndCurr;
+        }
     }
     console.log(exports.valuesList);
     
@@ -228,7 +243,7 @@ exports.handleBotRequest = async function (req) {
     } 
     
     
-    else if ((req.body.message.date - lastMsgDate) <= 10) {
+    else if ((req.body.message.date - lastMsgDate) < 7) {
         console.log((req.body.message.date));
         console.log((lastMsgDate));
         sendDirectReply(chatId, await translateText(config.timeSpam, message.from.language_code), message.message_id)
@@ -293,7 +308,7 @@ exports.handleBotRequest = async function (req) {
             sendDirectReply(chatId, await translateText(config.linkReceived, message.from.language_code));
             console.log("Link message");
         }
-        else if ((req.body.message.date - lastMsgDate) >= 11) {
+        else if ((req.body.message.date - lastMsgDate) >= 7) {
             let ms_id = await sendDirectReply(chatId, await translateText(config.newMessage, message.from.language_code), message.message_id);
             //console.log('ms_id', ms_id)
             try {
